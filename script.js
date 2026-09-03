@@ -59,8 +59,90 @@ let countdownId = null;
 let currentQuestion = null;
 let acceptingInput = false;
 let audioContext = null;
+let timerDeadline = null;
+let timerPenaltyAnimating = false;
+let penaltyAnimationId = null;
+let thirtySecondWarningPlayed = false;
+let lastCountdownSecondAnnounced = null;
 
 // 効果音（外部の音声ファイル不要・ブラウザだけで再生）
+
+function getAudioContext() {
+  try {
+    audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+    return audioContext;
+  } catch (e) {
+    return null;
+  }
+}
+
+// 残り30秒：焦りを生む警告音（高めの警告→低めの警告）
+function playThirtySecondWarningSound() {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    [
+      { freq: 880, start: 0.00, duration: 0.18 },
+      { freq: 660, start: 0.22, duration: 0.18 },
+      { freq: 880, start: 0.44, duration: 0.18 },
+      { freq: 660, start: 0.66, duration: 0.28 }
+    ].forEach(note => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(note.freq, now + note.start);
+      gain.gain.setValueAtTime(0.0001, now + note.start);
+      gain.gain.exponentialRampToValueAtTime(0.18, now + note.start + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + note.start + note.duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + note.start);
+      osc.stop(now + note.start + note.duration + 0.02);
+    });
+  } catch (e) {}
+}
+
+// 残り10秒以下：1秒ごとのカウントダウン音
+function playFinalCountdownSound(second) {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = second <= 3 ? "square" : "triangle";
+    const freq = second <= 3 ? 760 : 520;
+    osc.frequency.setValueAtTime(freq, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(second <= 3 ? 0.22 : 0.16, now + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.14);
+  } catch (e) {}
+}
+
+function updateTimeWarningEffects(remaining) {
+  if (remaining <= 30 && !thirtySecondWarningPlayed) {
+    thirtySecondWarningPlayed = true;
+    playThirtySecondWarningSound();
+    timerEl.classList.remove("thirtyWarning");
+    void timerEl.offsetWidth;
+    timerEl.classList.add("thirtyWarning");
+  }
+
+  if (remaining <= 10 && remaining >= 1 && lastCountdownSecondAnnounced !== remaining) {
+    lastCountdownSecondAnnounced = remaining;
+    playFinalCountdownSound(remaining);
+    timerEl.classList.remove("finalCountdown");
+    void timerEl.offsetWidth;
+    timerEl.classList.add("finalCountdown");
+  }
+}
+
 function playCorrectSound() {
   try {
     audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
@@ -101,6 +183,66 @@ function playWrongSound() {
     osc.start(now);
     osc.stop(now + 0.19);
   } catch (e) {}
+}
+
+function playClearSound() {
+  try {
+    audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioContext.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, i) => {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      const t = now + i * 0.12;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.24, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start(t);
+      osc.stop(t + 0.4);
+    });
+  } catch (e) {}
+}
+
+function playFailedSound() {
+  try {
+    audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioContext.currentTime;
+    [220, 165, 110].forEach((freq, i) => {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.value = freq;
+      const t = now + i * 0.16;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.18, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start(t);
+      osc.stop(t + 0.24);
+    });
+  } catch (e) {}
+}
+
+function showResult(id) {
+  showScreen(id);
+  if (id === "clear") {
+    playClearSound();
+    const screen = document.getElementById("clear");
+    screen.classList.remove("resultEnter");
+    void screen.offsetWidth;
+    screen.classList.add("resultEnter");
+  } else if (id === "failed") {
+    playFailedSound();
+    const screen = document.getElementById("failed");
+    screen.classList.remove("resultEnter");
+    void screen.offsetWidth;
+    screen.classList.add("resultEnter");
+  }
 }
 
 // 画面切り替え
@@ -190,6 +332,9 @@ function startGame() {
   missionIndex = 0;
   questionIndex = 0;
   timeLeft = LIMIT_SECONDS;
+  thirtySecondWarningPlayed = false;
+  lastCountdownSecondAnnounced = null;
+  timerEl.classList.remove("thirtyWarning", "finalCountdown", "penaltyFlash");
 
   // A〜Zの26問から、重複なしで5問をランダムに選ぶ。
   const shuffled = [...questionPool];
@@ -203,29 +348,81 @@ function startGame() {
   loadMission();
 }
 
-// 120秒タイマー
+// 90秒タイマー
 function startTimer() {
   clearInterval(timerId);
+  if (timerDeadline === null || timeLeft === LIMIT_SECONDS) {
+    timerDeadline = performance.now() + timeLeft * 1000;
+  }
+
+  timerPenaltyAnimating = false;
   updateTimer();
 
   timerId = setInterval(() => {
-    timeLeft--;
+    const remaining = Math.max(0, Math.ceil((timerDeadline - performance.now()) / 1000));
+    timeLeft = Math.min(LIMIT_SECONDS, remaining);
 
-    if (timeLeft <= 0) {
+    updateTimeWarningEffects(remaining);
+
+    if (!timerPenaltyAnimating) {
+      updateTimer();
+    }
+
+    if (remaining <= 0) {
       timeLeft = 0;
+      timerPenaltyAnimating = false;
       updateTimer();
       clearInterval(timerId);
       acceptingInput = false;
-      showScreen("failed");
-      return;
+      showResult("failed");
     }
-
-    updateTimer();
-  }, 1000);
+  }, 50);
 }
 
 function updateTimer() {
   timerEl.textContent = timeLeft;
+}
+
+// 誤答ペナルティ：実時間を5秒削り、タイマー表示も5段階で減る
+function applyWrongTimePenalty() {
+  if (timerDeadline === null || timerPenaltyAnimating) return;
+
+  const startDisplay = Math.max(0, Math.ceil((timerDeadline - performance.now()) / 1000));
+  const penaltySeconds = Math.min(5, startDisplay);
+  const endDisplay = Math.max(0, startDisplay - 5);
+
+  // 実際の終了時刻を先に5秒早める（見た目だけではなく本当に5秒ペナルティ）
+  timerDeadline -= 5000;
+  timeLeft = endDisplay;
+  timerPenaltyAnimating = true;
+
+  // タイマーを赤く光らせ、「-5 SEC」を表示
+  timerEl.classList.remove("penaltyFlash");
+  void timerEl.offsetWidth;
+  timerEl.classList.add("penaltyFlash");
+
+  clearInterval(penaltyAnimationId);
+  const startedAt = performance.now();
+  penaltyAnimationId = setInterval(() => {
+    const elapsed = performance.now() - startedAt;
+    const step = Math.min(penaltySeconds, Math.floor(elapsed / 100));
+    const displayed = Math.max(endDisplay, startDisplay - step);
+    timerEl.textContent = displayed;
+
+    if (step >= penaltySeconds || elapsed >= 550) {
+      clearInterval(penaltyAnimationId);
+      penaltyAnimationId = null;
+      timerPenaltyAnimating = false;
+      timeLeft = Math.max(0, Math.ceil((timerDeadline - performance.now()) / 1000));
+      updateTimer();
+
+      if (timeLeft <= 0) {
+        clearInterval(timerId);
+        acceptingInput = false;
+        showResult("failed");
+      }
+    }
+  }, 50);
 }
 
 // 問題を表示
@@ -290,7 +487,7 @@ function checkAnswer() {
 
         if (missionIndex >= 5) {
           clearInterval(timerId);
-          showScreen("clear");
+          showResult("clear");
         } else {
           loadMission();
         }
@@ -300,10 +497,10 @@ function checkAnswer() {
     }, 650);
 
   } else {
-    // 誤答はペナルティなし。
-    // 入力した文字を一度表示してから、赤い演出で間違いを知らせる。
+    // 誤答：既存の赤い演出に加えて、制限時間を5秒減らす。
     acceptingInput = false;
     playWrongSound();
+    applyWrongTimePenalty();
     answer.classList.remove("correctAnswer");
     message.classList.remove("correctFlash");
     message.textContent = "WRONG!";
@@ -333,6 +530,13 @@ document.getElementById("retryFromFailed").addEventListener("click", resetToStag
 function resetToStage() {
   clearInterval(timerId);
   clearInterval(countdownId);
+  clearInterval(penaltyAnimationId);
+  penaltyAnimationId = null;
+  timerDeadline = null;
+  timerPenaltyAnimating = false;
+  thirtySecondWarningPlayed = false;
+  lastCountdownSecondAnnounced = null;
+  timerEl.classList.remove("thirtyWarning", "finalCountdown", "penaltyFlash");
   acceptingInput = false;
   showScreen("stage");
 }

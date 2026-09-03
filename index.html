@@ -19,6 +19,7 @@
     <section id="rules" class="screen">
       <h2>ルール</h2>
       <p class="rulesText">指定された数字を探し、裏に<br>あるアルファベットを入力しろ</p>
+      <p class="penaltyRule">※ 誤答すると制限時間が<strong>5秒減少</strong>します</p>
       <button id="toConditions" class="btn">次へ</button>
     </section>
 
@@ -57,16 +58,24 @@
     </section>
 
     <!-- CLEAR -->
-    <section id="clear" class="screen resultScreen">
-      <div class="result clearResult">CLEAR</div>
+    <section id="clear" class="screen resultScreen clearScreen">
+      <div class="resultFx clearFx" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="resultBadge clearBadge">MISSION COMPLETE</div>
+      <div class="result clearResult">CLEAR!</div>
+      <div class="clearLine"><span class="clearCheck">✓</span> ALL 5 MISSIONS CLEARED</div>
       <p>次のステージに進んでください</p>
       <button id="retryFromClear" class="btn smallBtn">STAGE 1へ戻る</button>
     </section>
 
     <!-- FAILED -->
-    <section id="failed" class="screen resultScreen">
+    <section id="failed" class="screen resultScreen failedScreen">
+      <div class="resultFx failedFx" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+      <div class="resultBadge failedBadge">MISSION FAILED</div>
       <div class="result failedResult">FAILED</div>
-      <p>案内に従ってください</p>
+      <div class="failedLine">TIME OUT</div>
+      <p>時間切れです。もう一度挑戦してください</p>
       <button id="retryFromFailed" class="btn smallBtn">もう一度挑戦</button>
     </section>
 
