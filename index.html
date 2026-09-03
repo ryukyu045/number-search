@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NUMBER MISSION</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app">
+
+    <!-- STAGE 1 -->
+    <section id="stage" class="screen active">
+      <h1>STAGE 1</h1>
+      <button id="stageStart" class="btn">スタート</button>
+    </section>
+
+    <!-- RULES -->
+    <section id="rules" class="screen">
+      <h2>ルール</h2>
+      <p class="rulesText">指定された数字を探し、裏に<br>あるアルファベットを入力しろ</p>
+      <button id="toConditions" class="btn">次へ</button>
+    </section>
+
+    <!-- CLEAR CONDITIONS -->
+    <section id="conditions" class="screen">
+      <h2>クリア条件</h2>
+      <p class="conditionText">90秒以内に5問正解</p>
+      <button id="gameStart" class="btn">START</button>
+    </section>
+
+    <!-- COUNTDOWN -->
+    <section id="countdown" class="screen">
+      <div id="countdownNumber">3</div>
+    </section>
+
+    <!-- GAME -->
+    <section id="game" class="screen gameScreen">
+      <div class="gameTop">
+        <div class="missionTitle" id="missionTitle">MISSION 1</div>
+        <div class="timer" id="timer">90</div>
+      </div>
+
+      <div class="missionArea">
+        <div class="targetLine">
+          <span id="targetNumber">47</span>
+          <span class="findText">を探せ</span>
+        </div>
+
+        <input id="answer" class="answerBox" type="text" maxlength="1"
+               autocomplete="off" spellcheck="false" aria-label="アルファベット入力">
+
+        <div id="keyboard" class="keyboard" aria-label="アルファベットキーボード"></div>
+      </div>
+
+      <div id="message" class="message"></div>
+    </section>
+
+    <!-- CLEAR -->
+    <section id="clear" class="screen resultScreen">
+      <div class="result clearResult">CLEAR</div>
+      <p>次のステージに進んでください</p>
+      <button id="retryFromClear" class="btn smallBtn">STAGE 1へ戻る</button>
+    </section>
+
+    <!-- FAILED -->
+    <section id="failed" class="screen resultScreen">
+      <div class="result failedResult">FAILED</div>
+      <p>案内に従ってください</p>
+      <button id="retryFromFailed" class="btn smallBtn">もう一度挑戦</button>
+    </section>
+
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
