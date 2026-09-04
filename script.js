@@ -34,13 +34,16 @@ const questionPool = [
 const questionsPerMission = 1;
 
 // 制限時間（秒）
-const LIMIT_SECONDS = 90;
+const LIMIT_SECONDS = 150;
 
 // =====================================================
 
 const screens = document.querySelectorAll(".screen");
 const stageStart = document.getElementById("stageStart");
-const toConditions = document.getElementById("toConditions");
+const toExample = document.getElementById("toExample");
+const exampleAnswer = document.getElementById("exampleAnswer");
+const exampleKeyboard = document.getElementById("exampleKeyboard");
+const exampleMessage = document.getElementById("exampleMessage");
 const gameStart = document.getElementById("gameStart");
 const countdownNumber = document.getElementById("countdownNumber");
 const missionTitle = document.getElementById("missionTitle");
@@ -286,6 +289,36 @@ rows.forEach(rowLetters => {
   keyboard.appendChild(row);
 });
 
+// 例題用キーボードも本番と同じ見た目で独立して作成。
+// 例題は固定で「1を探せ」→「A」が正解。本番のランダム問題には一切影響しない。
+rows.forEach(rowLetters => {
+  const row = document.createElement("div");
+  row.className = "keyRow";
+
+  rowLetters.forEach(letter => {
+    const key = document.createElement("button");
+    key.className = "key";
+    key.textContent = letter;
+    key.type = "button";
+    key.addEventListener("click", () => typeExampleLetter(letter));
+    row.appendChild(key);
+  });
+
+  if (rowLetters[0] === "Z") {
+    const back = document.createElement("button");
+    back.className = "key backspace";
+    back.textContent = "⌫";
+    back.type = "button";
+    back.addEventListener("click", () => {
+      exampleAnswer.value = exampleAnswer.value.slice(0, -1);
+      exampleAnswer.focus();
+    });
+    row.appendChild(back);
+  }
+
+  exampleKeyboard.appendChild(row);
+});
+
 function typeLetter(letter) {
   if (!acceptingInput) return;
   answer.value = letter;
@@ -297,9 +330,11 @@ stageStart.addEventListener("click", () => {
   showScreen("rules");
 });
 
-// ルール → クリア条件
-toConditions.addEventListener("click", () => {
-  showScreen("conditions");
+// ルール → 例題
+toExample.addEventListener("click", () => {
+  resetExample();
+  showScreen("example");
+  setTimeout(() => exampleAnswer.focus(), 50);
 });
 
 // クリア条件 → 3,2,1 → MISSION1
@@ -336,19 +371,19 @@ function startGame() {
   lastCountdownSecondAnnounced = null;
   timerEl.classList.remove("thirtyWarning", "finalCountdown", "penaltyFlash");
 
-  // A〜Zの26問から、重複なしで5問をランダムに選ぶ。
+  // A〜Zの26問から、重複なしで8問をランダムに選ぶ。
   const shuffled = [...questionPool];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  missions = shuffled.slice(0, 5);
+  missions = shuffled.slice(0, 8);
 
   startTimer();
   loadMission();
 }
 
-// 90秒タイマー
+// 150秒タイマー
 function startTimer() {
   clearInterval(timerId);
   if (timerDeadline === null || timeLeft === LIMIT_SECONDS) {
@@ -485,7 +520,7 @@ function checkAnswer() {
         missionIndex++;
         questionIndex = 0;
 
-        if (missionIndex >= 5) {
+        if (missionIndex >= 8) {
           clearInterval(timerId);
           showResult("clear");
         } else {
@@ -523,6 +558,73 @@ function checkAnswer() {
   }
 }
 
+// 例題：固定問題「1を探せ」→「A」。タイマーは存在せず、本番のmissions配列にも触れない。
+let exampleAcceptingInput = true;
+
+function resetExample() {
+  exampleAcceptingInput = true;
+  exampleAnswer.value = "";
+  exampleAnswer.classList.remove("wrongAnswer", "correctAnswer");
+  exampleMessage.textContent = "";
+  exampleMessage.classList.remove("wrongFlash", "correctFlash");
+}
+
+function typeExampleLetter(letter) {
+  if (!exampleAcceptingInput) return;
+  exampleAnswer.value = letter;
+  checkExampleAnswer();
+}
+
+function checkExampleAnswer() {
+  if (!exampleAcceptingInput) return;
+  const entered = exampleAnswer.value.toUpperCase();
+  if (!entered) return;
+
+  if (entered === "A") {
+    exampleAcceptingInput = false;
+    playCorrectSound();
+    exampleMessage.textContent = "CORRECT!";
+    exampleMessage.classList.remove("wrongFlash", "correctFlash");
+    void exampleMessage.offsetWidth;
+    exampleMessage.classList.add("correctFlash");
+    exampleAnswer.classList.remove("wrongAnswer", "correctAnswer");
+    void exampleAnswer.offsetWidth;
+    exampleAnswer.classList.add("correctAnswer");
+
+    setTimeout(() => {
+      showScreen("conditions");
+    }, 650);
+  } else {
+    exampleAcceptingInput = false;
+    playWrongSound();
+    exampleMessage.textContent = "WRONG!";
+    exampleMessage.classList.remove("wrongFlash", "correctFlash");
+    void exampleMessage.offsetWidth;
+    exampleMessage.classList.add("wrongFlash");
+    exampleAnswer.classList.remove("wrongAnswer", "correctAnswer");
+    void exampleAnswer.offsetWidth;
+    exampleAnswer.classList.add("wrongAnswer");
+
+    setTimeout(() => {
+      exampleAnswer.value = "";
+      exampleAnswer.classList.remove("wrongAnswer");
+      exampleMessage.textContent = "";
+      exampleMessage.classList.remove("wrongFlash");
+      exampleAcceptingInput = true;
+      exampleAnswer.focus();
+    }, 500);
+  }
+}
+
+exampleAnswer.addEventListener("input", () => {
+  exampleAnswer.value = exampleAnswer.value.replace(/[^a-zA-Z]/g, "").slice(0, 1).toUpperCase();
+  if (exampleAnswer.value) checkExampleAnswer();
+});
+
+exampleAnswer.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && exampleAnswer.value) checkExampleAnswer();
+});
+
 // CLEAR / FAILED から戻る
 document.getElementById("retryFromClear").addEventListener("click", resetToStage);
 document.getElementById("retryFromFailed").addEventListener("click", resetToStage);
@@ -538,6 +640,7 @@ function resetToStage() {
   lastCountdownSecondAnnounced = null;
   timerEl.classList.remove("thirtyWarning", "finalCountdown", "penaltyFlash");
   acceptingInput = false;
+  resetExample();
   showScreen("stage");
 }
 

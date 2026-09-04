@@ -20,13 +20,32 @@
       <h2>ルール</h2>
       <p class="rulesText">指定された数字を探し、裏に<br>あるアルファベットを入力しろ</p>
       <p class="penaltyRule">※ 誤答すると制限時間が<strong>5秒減少</strong>します</p>
-      <button id="toConditions" class="btn">次へ</button>
+      <button id="toExample" class="btn">次へ</button>
+    </section>
+
+    <!-- EXAMPLE -->
+    <section id="example" class="screen gameScreen exampleScreen">
+      <div class="exampleHeading">例題</div>
+
+      <div class="missionArea">
+        <div class="targetLine">
+          <span id="exampleTargetNumber">1</span>
+          <span class="findText">を探せ</span>
+        </div>
+
+        <input id="exampleAnswer" class="answerBox" type="text" maxlength="1"
+               autocomplete="off" spellcheck="false" aria-label="例題のアルファベット入力">
+
+        <div id="exampleKeyboard" class="keyboard" aria-label="例題用アルファベットキーボード"></div>
+      </div>
+
+      <div id="exampleMessage" class="message"></div>
     </section>
 
     <!-- CLEAR CONDITIONS -->
     <section id="conditions" class="screen">
       <h2>クリア条件</h2>
-      <p class="conditionText">90秒以内に5問正解</p>
+      <p class="conditionText">150秒以内に8問正解</p>
       <button id="gameStart" class="btn">START</button>
     </section>
 
@@ -64,7 +83,7 @@
       </div>
       <div class="resultBadge clearBadge">MISSION COMPLETE</div>
       <div class="result clearResult">CLEAR!</div>
-      <div class="clearLine"><span class="clearCheck">✓</span> ALL 5 MISSIONS CLEARED</div>
+      <div class="clearLine"><span class="clearCheck">✓</span> ALL 8 MISSIONS CLEARED</div>
       <p>次のステージに進んでください</p>
       <button id="retryFromClear" class="btn smallBtn">STAGE 1へ戻る</button>
     </section>
