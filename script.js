@@ -34,7 +34,7 @@ const questionPool = [
 const questionsPerMission = 1;
 
 // 制限時間（秒）
-const LIMIT_SECONDS = 150;
+const LIMIT_SECONDS = 90;
 
 // =====================================================
 
@@ -377,7 +377,7 @@ function startGame() {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  missions = shuffled.slice(0, 8);
+  missions = shuffled.slice(0, 5);
 
   startTimer();
   loadMission();
@@ -520,7 +520,7 @@ function checkAnswer() {
         missionIndex++;
         questionIndex = 0;
 
-        if (missionIndex >= 8) {
+        if (missionIndex >= 5) {
           clearInterval(timerId);
           showResult("clear");
         } else {
